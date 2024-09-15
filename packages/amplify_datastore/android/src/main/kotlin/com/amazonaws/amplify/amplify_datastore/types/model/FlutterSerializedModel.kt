@@ -59,15 +59,19 @@ data class FlutterSerializedModel(val serializedModel: SerializedModel) {
                     is Temporal.Time -> value.format()
                     is Model -> FlutterSerializedModel(value as SerializedModel).toMap()
                     is Temporal.Timestamp -> value.secondsSinceEpoch
-                    is SerializedCustomType -> FlutterSerializedCustomType(value).toMap()
+                    is SerializedCustomType -> FlutterSerializedCustomType.fromSerializedCustomType(value).toMap()
                     is List<*> -> {
                         if (field.isCustomType) {
-                            // for a list like field if its type is CustomType
-                            // Then the item type must be CustomType
-                            (value.cast<SerializedCustomType>()).map { item ->
-                                FlutterSerializedCustomType(item).toMap()
+                            value.map { item ->
+                                when (item) {
+                                    // for a list like field if its type is CustomType
+                                    // Then the item type must be CustomType or a Map
+                                    is SerializedCustomType -> FlutterSerializedCustomType.fromSerializedCustomType(item).toMap()
+                                    is Map<*, *> -> FlutterSerializedCustomType.fromMap(item as Map<String, Any>).toMap()
+                                    else -> throw Exception("FlutterSerializedModel - unknown item in list: $item")
+                                }
                             }
-                        }
+                        } 
                         // If collection is not a collection of CustomType
                         // return the collection directly as
                         // 1. currently hasMany field won't be populated
@@ -85,3 +89,4 @@ data class FlutterSerializedModel(val serializedModel: SerializedModel) {
         }
     }
 }
+
